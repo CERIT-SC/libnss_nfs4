@@ -171,10 +171,10 @@ enum nss_status __fillPasswd( char *line, struct passwd *result, char *buffer,
 
     buffer[gds] = '\0';
     result->pw_gecos = &buffer[gds];
-    buffer[gds] = '\0';
+    buffer[gds+1] = '\0';
     result->pw_dir = &buffer[gds+1];
     buffer[gds + 2] = '\0';
-    result->pw_dir = &buffer[gds+2];
+    result->pw_shell = &buffer[gds+2];
 
     // don't count ending 0
     passwd_size -= 1;
