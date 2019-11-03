@@ -75,10 +75,14 @@ enum nss_status _nss_nfs4_setpwent( void ) {
 }
 
 enum nss_status _nss_nfs4_endpwent( void ) {
-    if ( __nfs4_passwd != NULL )
+    if ( __nfs4_passwd != NULL ) {
         fclose( __nfs4_passwd );
-    if ( __debug_file != NULL )
+        __nfs4_passwd = NULL;
+    }
+    if ( __debug_file != NULL ) {
         fclose( __debug_file );
+        __debug_file = NULL;
+    }
     return NSS_STATUS_SUCCESS;
 }
 
@@ -149,7 +153,7 @@ enum nss_status __fillPasswd( char *line, struct passwd *result, char *buffer,
         *errnop = ENOENT;
         return NSS_STATUS_NOTFOUND;
     }
-    name_size = (lineend - linestart) + 1;
+    name_size = ( lineend - linestart ) + 1;
     linestart = lineend + 1;
 
     lineend = __copyDeliminer( &passwd, linestart, ':', 0 );
@@ -158,10 +162,10 @@ enum nss_status __fillPasswd( char *line, struct passwd *result, char *buffer,
         *errnop = ENOENT;
         return NSS_STATUS_NOTFOUND;
     }
-    passwd_size = (lineend - linestart) + 1;
+    passwd_size = ( lineend - linestart ) + 1;
     linestart = lineend + 1;
 
-    if( name_size + passwd_size + 3 > buflen ) {
+    if ( name_size + passwd_size + 3 > buflen ) {
         *errnop = ERANGE;
         return NSS_STATUS_TRYAGAIN;
     }
@@ -171,10 +175,10 @@ enum nss_status __fillPasswd( char *line, struct passwd *result, char *buffer,
 
     buffer[gds] = '\0';
     result->pw_gecos = &buffer[gds];
-    buffer[gds+1] = '\0';
-    result->pw_dir = &buffer[gds+1];
+    buffer[gds + 1] = '\0';
+    result->pw_dir = &buffer[gds + 1];
     buffer[gds + 2] = '\0';
-    result->pw_shell = &buffer[gds+2];
+    result->pw_shell = &buffer[gds + 2];
 
     // don't count ending 0
     passwd_size -= 1;
@@ -221,14 +225,14 @@ enum nss_status _nss_nfs4_getpwent_r( struct passwd *result, char *buffer,
     char *line = NULL;
     size_t line_length = 0;
     enum nss_status ret = NSS_STATUS_SUCCESS;
-    if( getline( &line, &line_length, __nfs4_passwd ) > 0 ) {
+    if ( getline( &line, &line_length, __nfs4_passwd ) > 0 ) {
         ret = __fillPasswd( line, result, buffer, buflen, errnop );
         free( line );
     } else {
         ret = NSS_STATUS_NOTFOUND;
     }
     __debug_passwd( result );
-    if( ret == NSS_STATUS_TRYAGAIN && *errnop == ERANGE ) {
+    if ( ret == NSS_STATUS_TRYAGAIN && *errnop == ERANGE ) {
         fseek( __nfs4_passwd, tell, SEEK_SET );
     }
     return ret;
@@ -290,8 +294,11 @@ enum nss_status _nss_nfs4_getpwuid_r( uid_t uid, struct passwd *result,
                                       char *buffer, size_t buflen,
                                       int *errnop ) {
     int retcode = NSS_STATUS_SUCCESS;
-    if ( ( retcode = _nss_nfs4_setpwent() ) != NSS_STATUS_SUCCESS )
+    if ( __nfs4_passwd == NULL &&
+         ( retcode = _nss_nfs4_setpwent() ) != NSS_STATUS_SUCCESS ) {
+        _nss_nfs4_endpwent();
         return retcode;
+    }
     char mess[1024];
     sprintf( mess, "\nREQUEST FOR USER BASED ON UID: %i", uid );
     __debug( mess );
@@ -307,8 +314,11 @@ enum nss_status _nss_nfs4_getpwnam_r( const char *name, struct passwd *result,
                                       char *buffer, size_t buflen,
                                       int *errnop ) {
     int retcode = NSS_STATUS_SUCCESS;
-    if ( ( retcode = _nss_nfs4_setpwent() ) != NSS_STATUS_SUCCESS )
+    if ( __nfs4_passwd == NULL &&
+         ( retcode = _nss_nfs4_setpwent() ) != NSS_STATUS_SUCCESS ) {
+        _nss_nfs4_endpwent();
         return retcode;
+    }
     char mess[1024];
     sprintf( mess, "\nREQUEST FOR USER BASED ON NAME: %s", name );
     __debug( mess );
@@ -339,41 +349,46 @@ enum nss_status _nss_nfs4_setgrent( void ) {
 }
 
 enum nss_status _nss_nfs4_endgrent( void ) {
-    if ( __nfs4_group != NULL )
+    if ( __nfs4_group != NULL ) {
         fclose( __nfs4_group );
-    if ( __debug_file != NULL )
+        __nfs4_group = NULL;
+    }
+    if ( __debug_file != NULL ) {
         fclose( __debug_file );
+        __debug_file = NULL;
+    }
     return NSS_STATUS_SUCCESS;
 }
 
 size_t numberOfElements( char *start, char **end, char deliminer ) {
-    if( *start == '\n' || *start == '\0' ) {
-        while( **end != '\n' && **end != '\0' )
-            (*end)++;
+    if ( *start == '\n' || *start == '\0' ) {
+        while ( **end != '\n' && **end != '\0' )
+            ( *end )++;
         return 0;
     }
     size_t ret = 1;
     *end = start;
-    while( (start = strchr( start, deliminer ) ) != NULL ) {
+    while ( ( start = strchr( start, deliminer ) ) != NULL ) {
         ret++;
         start++;
         *end = start;
     }
-    while( **end != '\n' && **end != '\0' )
-        (*end)++;
+    while ( **end != '\n' && **end != '\0' )
+        ( *end )++;
     return ret;
 }
 
-void copyGroupMembers( char *dest, char **data, char *start, char *end, char deliminer ) {
+void copyGroupMembers( char *dest, char **data, char *start, char *end,
+                       char deliminer ) {
     *end = '\0';
-    memcpy( dest, start, (end - start)+1 );
+    memcpy( dest, start, ( end - start ) + 1 );
     size_t pos = 0;
-    while( 1 ) {
+    while ( 1 ) {
         data[pos] = dest;
-        while( *dest != deliminer && *dest != '\0' )
+        while ( *dest != deliminer && *dest != '\0' )
             dest++;
         pos++;
-        if( *dest == '\0' ) {
+        if ( *dest == '\0' ) {
             break;
         } else {
             *dest = '\0';
@@ -384,7 +399,7 @@ void copyGroupMembers( char *dest, char **data, char *start, char *end, char del
 }
 
 enum nss_status __fillGroup( char *line, struct group *result, char *buffer,
-                              size_t buflen, int *errnop ) {
+                             size_t buflen, int *errnop ) {
     char *linestart = line;
     char *lineend = line;
     size_t name_size = 0;
@@ -398,7 +413,7 @@ enum nss_status __fillGroup( char *line, struct group *result, char *buffer,
         *errnop = ENOENT;
         return NSS_STATUS_NOTFOUND;
     }
-    name_size = (lineend - linestart) + 1;
+    name_size = ( lineend - linestart ) + 1;
     linestart = lineend + 1;
 
     lineend = __copyDeliminer( &passwd, linestart, ':', 0 );
@@ -407,10 +422,10 @@ enum nss_status __fillGroup( char *line, struct group *result, char *buffer,
         *errnop = ENOENT;
         return NSS_STATUS_NOTFOUND;
     }
-    passwd_size = (lineend - linestart) + 1;
+    passwd_size = ( lineend - linestart ) + 1;
     linestart = lineend + 1;
 
-    if( name_size + passwd_size > buflen ) {
+    if ( name_size + passwd_size > buflen ) {
         *errnop = ERANGE;
         return NSS_STATUS_TRYAGAIN;
     }
@@ -435,7 +450,7 @@ enum nss_status __fillGroup( char *line, struct group *result, char *buffer,
     }
 
     linestart = strchr( linestart, ':' );
-    if( linestart == NULL ) {
+    if ( linestart == NULL ) {
         __debug( "Well, this shouldn't happen" );
         *errnop = ENOENT;
         return NSS_STATUS_NOTFOUND;
@@ -444,17 +459,20 @@ enum nss_status __fillGroup( char *line, struct group *result, char *buffer,
 
     // +1 because NULL terminated
     size_t num_of_groups = numberOfElements( linestart, &lineend, ',' ) + 1;
-    size_t complete_size = name_size + passwd_size + num_of_groups * sizeof( char * ) + (lineend - linestart) + 1;
+    size_t complete_size = name_size + passwd_size +
+                           num_of_groups * sizeof( char * ) +
+                           ( lineend - linestart ) + 1;
     char mess[1024];
     sprintf( mess, "struct group requires %zu bytes", complete_size );
     __debug( mess );
-    if( complete_size > buflen ) {
+    if ( complete_size > buflen ) {
         *errnop = ERANGE;
         return NSS_STATUS_TRYAGAIN;
     }
 
-    char *user_buffer = &buffer[name_size + passwd_size + 2 + sizeof(char*)*num_of_groups];
-    char **group_members = (void *)&buffer[name_size + passwd_size + 2];
+    char *user_buffer =
+        &buffer[name_size + passwd_size + 2 + sizeof( char * ) * num_of_groups];
+    char **group_members = ( void * )&buffer[name_size + passwd_size + 2];
     copyGroupMembers( user_buffer, group_members, linestart, lineend, ',' );
     result->gr_mem = group_members;
 
@@ -468,9 +486,8 @@ enum nss_status __fillGroup( char *line, struct group *result, char *buffer,
 
 void __debug_group( struct group *gr ) {
     char mess[2048];
-    sprintf( mess,
-             "RETURNED:\nName: %s\nPassword: %s\nGID: %i\n",
-             gr->gr_name, gr->gr_passwd, gr->gr_gid );
+    sprintf( mess, "RETURNED:\nName: %s\nPassword: %s\nGID: %i\n", gr->gr_name,
+             gr->gr_passwd, gr->gr_gid );
     __debug( mess );
 }
 
@@ -483,22 +500,21 @@ enum nss_status _nss_nfs4_getgrent_r( struct group *result, char *buffer,
     char *line = NULL;
     size_t line_length = 0;
     enum nss_status ret = NSS_STATUS_SUCCESS;
-    if( getline( &line, &line_length, __nfs4_group ) > 0 ) {
+    if ( getline( &line, &line_length, __nfs4_group ) > 0 ) {
         ret = __fillGroup( line, result, buffer, buflen, errnop );
         free( line );
     } else {
         ret = NSS_STATUS_NOTFOUND;
     }
     __debug_group( result );
-    if( ret == NSS_STATUS_TRYAGAIN && *errnop == ERANGE ) {
+    if ( ret == NSS_STATUS_TRYAGAIN && *errnop == ERANGE ) {
         fseek( __nfs4_group, tell, SEEK_SET );
     }
     return ret;
 }
 
-enum nss_status __findGroup( gid_t gid, const char *name,
-                              struct group *result, char *buffer,
-                              size_t buflen, int *errnop ) {
+enum nss_status __findGroup( gid_t gid, const char *name, struct group *result,
+                             char *buffer, size_t buflen, int *errnop ) {
     char *line = NULL;
     size_t line_length = 0;
     enum nss_status ret = NSS_STATUS_SUCCESS;
@@ -552,8 +568,11 @@ enum nss_status _nss_nfs4_getgrgid_r( gid_t gid, struct group *result,
                                       char *buffer, size_t buflen,
                                       int *errnop ) {
     int retcode = NSS_STATUS_SUCCESS;
-    if ( ( retcode = _nss_nfs4_setgrent() ) != NSS_STATUS_SUCCESS )
+    if ( __nfs4_passwd == NULL &&
+         ( retcode = _nss_nfs4_setgrent() ) != NSS_STATUS_SUCCESS ) {
+        _nss_nfs4_endgrent();
         return retcode;
+    }
     char mess[1024];
     sprintf( mess, "\nREQUEST FOR GROUP BASED ON GID: %i", gid );
     __debug( mess );
@@ -569,8 +588,11 @@ enum nss_status _nss_nfs4_getgrnam_r( const char *name, struct group *result,
                                       char *buffer, size_t buflen,
                                       int *errnop ) {
     int retcode = NSS_STATUS_SUCCESS;
-    if ( ( retcode = _nss_nfs4_setgrent() ) != NSS_STATUS_SUCCESS )
+    if ( __nfs4_passwd == NULL &&
+         ( retcode = _nss_nfs4_setgrent() ) != NSS_STATUS_SUCCESS ) {
+        _nss_nfs4_endgrent();
         return retcode;
+    }
     char mess[1024];
     sprintf( mess, "\nREQUEST FOR GROUP BASED ON NAME: %s", name );
     __debug( mess );
