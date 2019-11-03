@@ -151,6 +151,7 @@ enum nss_status __fillPasswd( char *line, struct passwd *result, char *buffer,
     if ( lineend == NULL ) {
         __debug( "Line is empty" );
         *errnop = ENOENT;
+        free( name );
         return NSS_STATUS_NOTFOUND;
     }
     name_size = ( lineend - linestart ) + 1;
@@ -160,6 +161,7 @@ enum nss_status __fillPasswd( char *line, struct passwd *result, char *buffer,
     if ( lineend == NULL ) {
         __debug( "Found a line withoug a passwd field" );
         *errnop = ENOENT;
+        free( passwd );
         return NSS_STATUS_NOTFOUND;
     }
     passwd_size = ( lineend - linestart ) + 1;
@@ -167,6 +169,8 @@ enum nss_status __fillPasswd( char *line, struct passwd *result, char *buffer,
 
     if ( name_size + passwd_size + 3 > buflen ) {
         *errnop = ERANGE;
+        free( name );
+        free( passwd );
         return NSS_STATUS_TRYAGAIN;
     }
 
@@ -183,12 +187,14 @@ enum nss_status __fillPasswd( char *line, struct passwd *result, char *buffer,
     // don't count ending 0
     passwd_size -= 1;
     strncpy( &buffer[name_size], passwd, passwd_size );
+    free( passwd );
     buffer[name_size + passwd_size] = '\0';
     result->pw_passwd = &buffer[name_size];
 
     // don't count ending 0
     name_size -= 1;
     strncpy( buffer, name, name_size );
+    free( name );
     buffer[name_size] = '\0';
     result->pw_name = buffer;
 
@@ -227,10 +233,10 @@ enum nss_status _nss_nfs4_getpwent_r( struct passwd *result, char *buffer,
     enum nss_status ret = NSS_STATUS_SUCCESS;
     if ( getline( &line, &line_length, __nfs4_passwd ) > 0 ) {
         ret = __fillPasswd( line, result, buffer, buflen, errnop );
-        free( line );
     } else {
         ret = NSS_STATUS_NOTFOUND;
     }
+    free( line );
     __debug_passwd( result );
     if ( ret == NSS_STATUS_TRYAGAIN && *errnop == ERANGE ) {
         fseek( __nfs4_passwd, tell, SEEK_SET );
@@ -413,6 +419,7 @@ enum nss_status __fillGroup( char *line, struct group *result, char *buffer,
     if ( lineend == NULL ) {
         __debug( "Line is empty" );
         *errnop = ENOENT;
+        free( name );
         return NSS_STATUS_NOTFOUND;
     }
     name_size = ( lineend - linestart ) + 1;
@@ -422,6 +429,7 @@ enum nss_status __fillGroup( char *line, struct group *result, char *buffer,
     if ( lineend == NULL ) {
         __debug( "Found a line withoug a passwd field" );
         *errnop = ENOENT;
+        free( passwd );
         return NSS_STATUS_NOTFOUND;
     }
     passwd_size = ( lineend - linestart ) + 1;
@@ -429,18 +437,22 @@ enum nss_status __fillGroup( char *line, struct group *result, char *buffer,
 
     if ( name_size + passwd_size > buflen ) {
         *errnop = ERANGE;
+        free( name );
+        free( passwd );
         return NSS_STATUS_TRYAGAIN;
     }
 
     // don't count ending 0
     passwd_size -= 1;
     strncpy( &buffer[name_size], passwd, passwd_size );
+    free( passwd );
     buffer[name_size + passwd_size] = '\0';
     result->gr_passwd = &buffer[name_size];
 
     // don't count ending 0
     name_size -= 1;
     strncpy( buffer, name, name_size );
+    free( name );
     buffer[name_size] = '\0';
     result->gr_name = buffer;
 
@@ -504,10 +516,10 @@ enum nss_status _nss_nfs4_getgrent_r( struct group *result, char *buffer,
     enum nss_status ret = NSS_STATUS_SUCCESS;
     if ( getline( &line, &line_length, __nfs4_group ) > 0 ) {
         ret = __fillGroup( line, result, buffer, buflen, errnop );
-        free( line );
     } else {
         ret = NSS_STATUS_NOTFOUND;
     }
+    free( line );
     __debug_group( result );
     if ( ret == NSS_STATUS_TRYAGAIN && *errnop == ERANGE ) {
         fseek( __nfs4_group, tell, SEEK_SET );
