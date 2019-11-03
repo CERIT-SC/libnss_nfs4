@@ -112,9 +112,9 @@ char *__copyDeliminer( char **dest, char *input, char deliminer, int pos ) {
     }
 
     if ( *dest == NULL ) {
-        char *tmp = realloc( *dest, ( max - input ) + 1 );
+        char *tmp = malloc( ( max - input ) + 1 );
         if ( tmp == NULL ) {
-            __debug( "Couldn't realloc pointer" );
+            __debug( "Couldn't malloc pointer" );
             return NULL;
         }
         *dest = tmp;
@@ -251,6 +251,8 @@ enum nss_status __findPasswd( uid_t uid, const char *name,
 
     if ( name != NULL ) {
         do {
+            free( my_name );
+            my_name = NULL;
             getline( &line, &line_length, __nfs4_passwd );
             __copyDeliminer( &my_name, line, ':', 0 );
         } while ( my_name != NULL && strcmp( my_name, name ) &&
@@ -525,6 +527,8 @@ enum nss_status __findGroup( gid_t gid, const char *name, struct group *result,
 
     if ( name != NULL ) {
         do {
+            free( my_name );
+            my_name = NULL;
             getline( &line, &line_length, __nfs4_group );
             __copyDeliminer( &my_name, line, ':', 0 );
         } while ( my_name != NULL && strcmp( my_name, name ) &&
