@@ -266,6 +266,17 @@ enum nss_status _nss_nfs4_getpwent_r( struct passwd *result, char *buffer,
     return ret;
 }
 
+char *_nss_nfs4_removeRealm( char *line ) {
+    char *ret = _nss_nfs4_getDeliminer( line, ':', 1 ) - 1;
+    char *name = NULL;
+    char *endofname = _nss_nfs4_copyDeliminer( &name, line, '@', 0 );
+    size_t name_size = endofname - line;
+    ret -= name_size;
+    strncpy( ret, name, name_size );
+    free( name );
+    return ret;
+}
+
 enum nss_status _nss_nfs4_findPasswd( uid_t uid, const char *name,
                                       struct passwd *result, char *buffer,
                                       size_t buflen, int *errnop ) {
@@ -276,6 +287,7 @@ enum nss_status _nss_nfs4_findPasswd( uid_t uid, const char *name,
     fseek( _nss_nfs4_passwd, 0, SEEK_SET );
     unsigned int my_uid = uid + 1;
     char *my_name = NULL;
+    char *real_line = NULL;
 
     if ( name != NULL ) {
         do {
@@ -285,6 +297,7 @@ enum nss_status _nss_nfs4_findPasswd( uid_t uid, const char *name,
             _nss_nfs4_copyDeliminer( &my_name, line, ':', 0 );
         } while ( my_name != NULL && strcmp( my_name, name ) &&
                   !feof( _nss_nfs4_passwd ) );
+        real_line = line;
         if ( my_name == NULL || strcmp( my_name, name ) ) {
             _nss_nfs4_debug( "DIDN'T FIND SPECIFIED USER\n" );
             goto fail;
@@ -295,21 +308,23 @@ enum nss_status _nss_nfs4_findPasswd( uid_t uid, const char *name,
             my_uid = _nss_nfs4_numDeliminer( line, ':', 2 );
         } while ( my_uid != ( unsigned int )-1 && my_uid != uid &&
                   !feof( _nss_nfs4_passwd ) );
+        real_line = line;
         if ( my_uid == ( unsigned int )-1 || my_uid != uid ) {
             _nss_nfs4_debug( "DIDN'T FIND SPECIFIED USER\n" );
             goto fail;
         }
+        line = _nss_nfs4_removeRealm( line );
     }
 
     ret = _nss_nfs4_fillPasswd( line, result, buffer, buflen, errnop );
 
-    free( line );
+    free( real_line );
     free( my_name );
     fseek( _nss_nfs4_passwd, tell, SEEK_SET );
     return ret;
 
 fail:
-    free( line );
+    free( real_line );
     free( my_name );
     fseek( _nss_nfs4_passwd, tell, SEEK_SET );
     *errnop = ENOENT;
