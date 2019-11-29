@@ -5,10 +5,10 @@ LIBRARY=libnss_nfs4.so.2
 
 all: ${LIBRARY}
 
-${LIBRARY}: CFLAGS += -shared -fPIC
+${LIBRARY}: CFLAGS += -shared -fPIC -pthread
 ${LIBRARY}: nfs4.c
 	${CC} ${CFLAGS} -Wl,-soname,${LIBRARY}\
-		-o ${LIBRARY} $^
+		-o ${LIBRARY} -pthread $^
 
 clean:
 	${RM} *.so* *.o
