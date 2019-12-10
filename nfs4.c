@@ -205,14 +205,16 @@ end:
 
 enum nss_status _nss_nfs4_getpwent_r( struct passwd *result, char *buffer,
                                       size_t buflen, int *errnop ) {
-    if ( _nss_nfs4_passwd == NULL )
-        return NSS_STATUS_UNAVAIL;
-
+    enum nss_status ret = NSS_STATUS_SUCCESS;
     pthread_mutex_lock( &_nss_nfs4_mutex_p );
+    if ( _nss_nfs4_passwd == NULL ) {
+        ret = NSS_STATUS_UNAVAIL;
+        goto end;
+    }
+
     long tell = ftell( _nss_nfs4_passwd );
     char *line = NULL;
     size_t line_length = 0;
-    enum nss_status ret = NSS_STATUS_SUCCESS;
 
     if ( getline( &line, &line_length, _nss_nfs4_passwd ) > 0 ) {
         ret = _nss_nfs4_fillPasswd( line, result, buffer, buflen, errnop,
@@ -225,6 +227,7 @@ enum nss_status _nss_nfs4_getpwent_r( struct passwd *result, char *buffer,
     if ( ret == NSS_STATUS_TRYAGAIN && *errnop == ERANGE ) {
         fseek( _nss_nfs4_passwd, tell, SEEK_SET );
     }
+end:
     pthread_mutex_unlock( &_nss_nfs4_mutex_p );
     return ret;
 }
@@ -460,14 +463,16 @@ end:
 
 enum nss_status _nss_nfs4_getgrent_r( struct group *result, char *buffer,
                                       size_t buflen, int *errnop ) {
-    if ( _nss_nfs4_group == NULL )
-        return NSS_STATUS_UNAVAIL;
-
+    enum nss_status ret = NSS_STATUS_SUCCESS;
     pthread_mutex_lock( &_nss_nfs4_mutex_g );
+    if ( _nss_nfs4_group == NULL ) {
+        ret = NSS_STATUS_UNAVAIL;
+        goto end;
+    }
+
     long tell = ftell( _nss_nfs4_group );
     char *line = NULL;
     size_t line_length = 0;
-    enum nss_status ret = NSS_STATUS_SUCCESS;
 
     if ( getline( &line, &line_length, _nss_nfs4_group ) > 0 ) {
         ret = _nss_nfs4_fillGroup( line, result, buffer, buflen, errnop,
@@ -480,6 +485,7 @@ enum nss_status _nss_nfs4_getgrent_r( struct group *result, char *buffer,
     if ( ret == NSS_STATUS_TRYAGAIN && *errnop == ERANGE ) {
         fseek( _nss_nfs4_group, tell, SEEK_SET );
     }
+end:
     pthread_mutex_unlock( &_nss_nfs4_mutex_g );
     return ret;
 }
