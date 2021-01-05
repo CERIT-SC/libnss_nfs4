@@ -247,6 +247,9 @@ enum nss_status _nss_nfs4_findPasswd( uid_t uid, const char *name,
                                       struct passwd *result, char *buffer,
                                       size_t buflen, int *errnop ) {
     FILE *passwd_file = fopen( "/etc/passwd-nfs4", "r" );
+    if ( passwd_file == NULL ) {
+        return NSS_STATUS_UNAVAIL;
+    }
     char *line = NULL;
     size_t line_length = 0;
     enum nss_status ret = NSS_STATUS_SUCCESS;
@@ -494,6 +497,9 @@ enum nss_status _nss_nfs4_findGroup( gid_t gid, const char *name,
                                      struct group *result, char *buffer,
                                      size_t buflen, int *errnop ) {
     FILE *group_file = fopen( "/etc/group-nfs4", "r" );
+    if ( group_file == NULL ) {
+        return NSS_STATUS_UNAVAIL;
+    }
     char *line = NULL;
     size_t line_length = 0;
     enum nss_status ret = NSS_STATUS_SUCCESS;
