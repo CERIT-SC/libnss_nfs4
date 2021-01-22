@@ -16,4 +16,8 @@ install:
 	cp ${LIBRARY} /lib
 	cp ${LIBRARY} /usr/lib
 
+fpm_centos: ${LIBRARY}
+	install -d release/lib64
+	install -m 755 ${LIBRARY} release/lib64
+
 .PHONY: all clean install
